@@ -1,4 +1,4 @@
-module gelegram-sdk
+module github.com/sittichotCh/gelegram-sdk
 
 go 1.19
 
