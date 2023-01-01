@@ -5,21 +5,48 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-resty/resty/v2"
+	"github.com/kelseyhightower/envconfig"
 	"github.com/rs/zerolog/log"
 )
 
 type TelegramAPI struct {
-	Url string
+	config config
 }
 
-func NewTelegramAPI(url string) *TelegramAPI {
+type config struct {
+	APIUrl     string `envconfig:"API_URL"`
+	WebhookUrl string `envconfig:"WEBHOOK_URL"`
+}
+
+func NewTelegramAPI() *TelegramAPI {
+	config := config{}
+	if err := envconfig.Process("TELEGRAM", config); err != nil {
+		panic(err)
+	}
 	return &TelegramAPI{
-		Url: url,
+		config: config,
 	}
 }
 
+func (r *TelegramAPI) SetWebhookUrl() error {
+	if r.config.WebhookUrl == "" {
+		return nil
+	}
+
+	url := fmt.Sprintf("%s/setWebhook", r.SetWebhookUrl)
+	resp, err := resty.New().R().SetQueryParams(map[string]string{
+		"url": r.config.WebhookUrl,
+	}).Get(url)
+	if err != nil {
+		return err
+	}
+
+	log.Info().Interface("response", string(resp.Body())).Msg("set webhook url success")
+	return nil
+}
+
 func (r *TelegramAPI) getSendMessageUrl() string {
-	return fmt.Sprintf("%s/sendMessage", r.Url)
+	return fmt.Sprintf("%s/sendMessage", r.config.APIUrl)
 }
 
 func (r *TelegramAPI) SendMessageContext(context context.Context, request *SendMessageRequest) (*SendMessageResponse, error) {
@@ -46,7 +73,7 @@ func (r *TelegramAPI) SendMessageContext(context context.Context, request *SendM
 }
 
 func (r *TelegramAPI) SendMessage(request *SendMessageRequest) (*SendMessageResponse, error) {
-	return r.SendMessageContext(context.Background(), request)
+	return r.SendMessageContext(context.TODO(), request)
 }
 
 func logResponse(bytes []byte) {
